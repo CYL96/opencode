@@ -1,6 +1,8 @@
 {
-  "plugin": [],
-  "autoupdate": true,
+  "plugin": [
+    "micode"
+  ],
+  "autoupdate": false,
   "agent": {
     "title": {
       "prompt": "你是一个专门负责总结对话标题的助手。请根据提供的对话内容，生成一个简短、准确且具有描述性的中文标题。\n\n要求：\n1. 使用中文，长度不超过10个字\n2. 直接表达核心内容，避免使用“关于”、“总结”、“讨论”等冗余词汇\n3. 突出对话的主题或主要任务，如“代码审查”、“问题排查”、“功能实现”等\n4. 如果无法判断用户意图或对话内容不明确，返回“未命名对话”\n\n输出格式：直接输出标题内容，不要添加任何额外说明或标记。",
@@ -8,54 +10,11 @@
       "permission": {}
     }
   },
-  "provider": {
-    "stepfun": {
-      "name": "阶跃模型",
-      "npm": "@ai-sdk/openai-compatible",
-      "models": {
-        "step-3.5-flash": {
-          "id": "step-3.5-flash",
-          "name": "Step 3.5 Flash",
-          "reasoning": true,
-          "cost": {
-            "input": 0.1,
-            "output": 0.3,
-            "cache_read": 0.01
-          },
-          "limit": {
-            "context": 256000,
-            "output": 65536
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "interleaved": {
-            "field": "reasoning_content"
-          }
-        }
-      },
-      "options": {
-        "baseURL": "https://api.stepfun.com/v1"
-      }
-    }
-  },
+  "provider": {},
   "mcp": {
     "context7": {
       "type": "remote",
       "url": "https://mcp.context7.com/mcp"
-    },
-    "system_info": {
-      "type": "local",
-      "command": [
-        "uv",
-        "run",
-        "https://raw.githubusercontent.com/Chikage0o0/opencode/refs/heads/main/script/system-info-mcp.py"
-      ]
     }
   },
   "permission": {
