@@ -1,5 +1,5 @@
 import type { Plugin } from "@opencode-ai/plugin"
-import { dirname, join } from "node:path"
+import { delimiter, dirname, join } from "node:path"
 
 const files = ["devenv.nix", "devenv.yaml", "devenv.yml"]
 const cache = new Map<string, Promise<Record<string, string>>>()
@@ -51,6 +51,22 @@ async function load(dir: string) {
   )
 }
 
+function mergePath(current: string | undefined, next: string | undefined) {
+  if (!current) return next
+  if (!next) return current
+
+  const seen = new Set<string>()
+  const merged: string[] = []
+
+  for (const value of [...next.split(delimiter), ...current.split(delimiter)]) {
+    if (!value || seen.has(value)) continue
+    seen.add(value)
+    merged.push(value)
+  }
+
+  return merged.join(delimiter)
+}
+
 export const DevenvPlugin: Plugin = async () => {
   return {
     "shell.env": async (input, output) => {
@@ -71,7 +87,10 @@ export const DevenvPlugin: Plugin = async () => {
         })
 
       cache.set(dir, env)
-      Object.assign(output.env, await env)
+
+      const loaded = await env
+      Object.assign(output.env, loaded)
+      output.env.PATH = mergePath(process.env.PATH, loaded.PATH)
     },
   }
 }
