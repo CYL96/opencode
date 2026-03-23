@@ -57,6 +57,12 @@ export const DevenvPlugin: Plugin = async () => {
       const dir = await root(input.cwd)
       if (!dir) return
 
+      for (const [key, value] of Object.entries(process.env)) {
+        if (value !== undefined && output.env[key] === undefined) {
+          output.env[key] = value
+        }
+      }
+
       const env =
         cache.get(dir) ??
         load(dir).catch((err) => {
