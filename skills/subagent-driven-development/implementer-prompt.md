@@ -2,6 +2,8 @@
 
 Use this template when dispatching an implementer subagent.
 
+**Session boundary rule:** This prompt is for exactly one plan task. For a different plan task, start a new subagent session (no prior `task_id`).
+
 ```
 OpenCode `task` tool:
   description: "Implement Task N: [task name]"

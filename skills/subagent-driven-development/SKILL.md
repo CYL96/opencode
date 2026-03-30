@@ -5,11 +5,11 @@ description: Use when executing implementation plans with independent tasks in t
 
 # Subagent-Driven Development
 
-Execute plan by dispatching fresh subagent per task, with two-stage review after each: spec compliance review first, then code quality review.
+Execute plan by dispatching a fresh subagent at each task boundary, with two-stage review after each: spec compliance review first, then code quality review.
 
 **Why subagents:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never inherit your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
 
-**Core principle:** Fresh subagent per task + two-stage review (spec then quality) = high quality, fast iteration
+**Core principle:** Fresh subagent per task boundary + two-stage review (spec then quality) = high quality, fast iteration
 
 ## When to Use
 
@@ -99,6 +99,19 @@ Use the least powerful model that can handle each role to conserve cost and incr
 - Touches multiple files with integration concerns → standard model
 - Requires design judgment or broad codebase understanding → most capable model
 
+## Task Boundary Isolation (Critical)
+
+Context isolation is the whole point of this workflow. Treat each plan task as a hard boundary.
+
+**Required rules:**
+- **Different plan task => different subagent session.** Start a new `task` invocation and do not pass a previous `task_id`.
+- **Never reuse prior-task `task_id` values** for implementer, spec reviewer, or code quality reviewer.
+- **Reuse is allowed only within the same plan task** (for `NEEDS_CONTEXT`, re-dispatches, and review/fix loops).
+- Once a plan task is marked complete, consider all subagent session IDs for that task closed and unavailable.
+
+**Controller sanity check before dispatch:**
+- If current task label changed (for example from Task 1 to Task 2), any attempt to resume a prior `task_id` is a workflow violation.
+
 ## Handling Implementer Status
 
 Implementer subagents report one of four statuses. Handle each appropriately:
@@ -159,6 +172,7 @@ Code reviewer: Strengths: Good test coverage, clean. Issues: None. Approved.
 Task 2: Recovery modes
 
 [Get Task 2 text and context (already extracted)]
+[Create NEW implementer subagent session for Task 2 (do not reuse Task 1 `task_id`)]
 [Dispatch implementation subagent with full task text + context]
 
 Implementer: [No extra context needed, proceeds]
@@ -246,6 +260,7 @@ Done!
 - Let implementer self-review replace actual review (both are needed)
 - **Start code quality review before spec compliance is ✅** (wrong order)
 - Move to next task while either review has open issues
+- Reuse any `task_id` from Task N when dispatching Task N+1 (context contamination)
 
 **If subagent returns `NEEDS_CONTEXT`:**
 - Answer clearly and completely
@@ -254,7 +269,7 @@ Done!
 - Don't rush them into implementation
 
 **If reviewer finds issues:**
-- Implementer (same subagent) fixes them
+- Implementer (same-task subagent) fixes them
 - Reviewer reviews again
 - Repeat until approved
 - Don't skip the re-review

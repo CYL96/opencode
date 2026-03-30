@@ -2,6 +2,8 @@
 
 Use this template when dispatching a code quality reviewer subagent.
 
+**Session boundary rule:** This prompt is scoped to one plan task review cycle. Never reuse its `task_id` for a different plan task.
+
 **Purpose:** Verify implementation is well-built (clean, tested, maintainable)
 
 **Only dispatch after spec compliance review passes.**

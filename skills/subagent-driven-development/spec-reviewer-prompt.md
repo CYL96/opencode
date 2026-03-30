@@ -2,6 +2,8 @@
 
 Use this template when dispatching a spec compliance reviewer subagent.
 
+**Session boundary rule:** This prompt is scoped to one plan task review cycle. Never reuse its `task_id` for a different plan task.
+
 **Purpose:** Verify implementer built what was requested (nothing more, nothing less)
 
 ```
