@@ -2,6 +2,8 @@
 
 You are reviewing code changes for production readiness.
 
+Use this template only for committed-range reviews where both `BASE_SHA` and `HEAD_SHA` are available. Do not use it for pre-commit task reviews in `subagent-driven-development`; that workflow reviews the current working tree diff against `BASE_SHA` with its own prompt.
+
 **Your task:**
 1. Review {WHAT_WAS_IMPLEMENTED}
 2. Compare against {PLAN_OR_REQUIREMENTS}
@@ -17,7 +19,7 @@ You are reviewing code changes for production readiness.
 
 {PLAN_REFERENCE}
 
-## Git Range to Review
+## Committed Git Range to Review
 
 **Base:** {BASE_SHA}
 **Head:** {HEAD_SHA}

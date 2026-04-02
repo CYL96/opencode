@@ -12,7 +12,6 @@ Dispatch an OpenCode reviewer subagent with the `task` tool to catch issues befo
 ## When to Request Review
 
 **Mandatory:**
-- After each task in subagent-driven development
 - After completing major feature
 - Before merge to main
 
@@ -22,6 +21,12 @@ Dispatch an OpenCode reviewer subagent with the `task` tool to catch issues befo
 - After fixing complex bug
 
 ## How to Request
+
+**Subagent-driven-development exception:**
+
+Do not use the committed-range flow below for pre-commit task reviews. In that workflow, the controller should wait until spec compliance passes, then dispatch the task-specific prompt at `skills/subagent-driven-development/code-quality-reviewer-prompt.md` to review the current working tree diff against `BASE_SHA`.
+
+Use the steps below when reviewing an already-committed range, such as a major feature before merge.
 
 **1. Get git SHAs:**
 ```bash
@@ -37,7 +42,7 @@ Use the OpenCode `task` tool with `subagent_type: "general"`, and fill the promp
 - `{WHAT_WAS_IMPLEMENTED}` - What you just built
 - `{PLAN_OR_REQUIREMENTS}` - What it should do
 - `{BASE_SHA}` - Starting commit
-- `{HEAD_SHA}` - Ending commit
+- `{HEAD_SHA}` - Ending commit for committed-range reviews
 - `{DESCRIPTION}` - Brief summary
 
 **3. Act on feedback:**
@@ -49,19 +54,19 @@ Use the OpenCode `task` tool with `subagent_type: "general"`, and fill the promp
 ## Example
 
 ```
-[Just completed Task 2: Add verification function]
+[Just completed a major feature and want review before merge]
 
 You: Let me request code review before proceeding.
 
-BASE_SHA=$(git log --oneline | grep "Task 1" | head -1 | awk '{print $1}')
+BASE_SHA=$(git merge-base HEAD origin/main)
 HEAD_SHA=$(git rev-parse HEAD)
 
 [Dispatch reviewer subagent via OpenCode `task`]
-  WHAT_WAS_IMPLEMENTED: Verification and repair functions for conversation index
-  PLAN_OR_REQUIREMENTS: Task 2 from docs/superpowers/plans/deployment-plan.md
+  WHAT_WAS_IMPLEMENTED: Search indexing and repair support
+  PLAN_OR_REQUIREMENTS: docs/superpowers/plans/deployment-plan.md
   BASE_SHA: a7981ec
   HEAD_SHA: 3df7661
-  DESCRIPTION: Added verifyIndex() and repairIndex() with 4 issue types
+  DESCRIPTION: Added indexing, verification, and repair flows for conversation search
 
 [Subagent returns]:
   Strengths: Clean architecture, real tests
@@ -77,9 +82,9 @@ You: [Fix progress indicators]
 ## Integration with Workflows
 
 **Subagent-Driven Development:**
-- Review after EACH task
-- Catch issues before they compound
-- Fix before moving to next task
+- First complete spec compliance review for the task
+- Then review the uncommitted task diff against `BASE_SHA`
+- Use `skills/subagent-driven-development/code-quality-reviewer-prompt.md`, not `requesting-code-review/code-reviewer.md`
 
 **Executing Plans:**
 - Review after each batch (3 tasks)

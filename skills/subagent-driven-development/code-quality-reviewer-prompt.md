@@ -13,13 +13,26 @@ OpenCode `task` tool:
   description: "Review code quality for Task N"
   subagent_type: "general"
   prompt: |
-    Use template at `requesting-code-review/code-reviewer.md` and fill in:
+    Review the current task's code quality before it is committed.
 
     WHAT_WAS_IMPLEMENTED: [from implementer's report]
     PLAN_OR_REQUIREMENTS: Task N from [plan-file]
     BASE_SHA: [commit before task]
-    HEAD_SHA: [current commit]
     DESCRIPTION: [task summary]
+
+    The task is not committed yet. Review the working tree diff against BASE_SHA with:
+    - `git diff --stat [BASE_SHA]`
+    - `git diff [BASE_SHA]`
+
+    Output exactly these sections:
+    ### Strengths
+    ### Issues
+    #### Critical (Must Fix)
+    #### Important (Should Fix)
+    #### Minor (Nice to Have)
+    ### Assessment
+
+    Do not ask for `HEAD_SHA` or a committed review range.
 ```
 
 **In addition to standard code quality concerns, the reviewer should check:**

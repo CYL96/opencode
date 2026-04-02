@@ -35,9 +35,12 @@ OpenCode `task` tool:
     1. Implement exactly what the task specifies
     2. Write tests (following TDD if task says to)
     3. Verify implementation works
-    4. Commit your work
-    5. Self-review (see below)
-    6. Report back
+    4. Self-review (see below)
+    5. Report back
+
+    Do not commit during this initial implementation pass. The controller will tell you
+    when spec compliance and code quality reviews have both passed and it is time to
+    commit the approved task changes.
 
     Work from: [directory]
 

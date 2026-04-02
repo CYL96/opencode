@@ -5,11 +5,11 @@ description: Use when executing implementation plans with independent tasks in t
 
 # Subagent-Driven Development
 
-Execute plan by dispatching a fresh subagent at each task boundary, with two-stage review after each: spec compliance review first, then code quality review.
+Execute plan by dispatching a fresh subagent at each task boundary, with two-stage review after each: spec compliance review first, then code quality review. Commit the task only after both reviews pass.
 
 **Why subagents:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never inherit your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
 
-**Core principle:** Fresh subagent per task boundary + two-stage review (spec then quality) = high quality, fast iteration
+**Core principle:** Fresh subagent per task boundary + two-stage review (spec then quality) + commit only after approval = high quality, fast iteration
 
 ## When to Use
 
@@ -48,13 +48,14 @@ digraph process {
         "Dispatch implementer subagent (./implementer-prompt.md)" [shape=box];
         "Implementer returns NEEDS_CONTEXT/BLOCKED?" [shape=diamond];
         "Controller answers directly or asks user via question" [shape=box];
-        "Implementer subagent implements, tests, commits, self-reviews" [shape=box];
+        "Implementer subagent implements, tests, self-reviews" [shape=box];
         "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" [shape=box];
         "Spec reviewer subagent confirms code matches spec?" [shape=diamond];
         "Implementer subagent fixes spec gaps" [shape=box];
         "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [shape=box];
         "Code quality reviewer subagent approves?" [shape=diamond];
         "Implementer subagent fixes quality issues" [shape=box];
+        "Implementer subagent commits approved task changes" [shape=box];
         "Mark task complete in TodoWrite" [shape=box];
     }
 
@@ -67,8 +68,8 @@ digraph process {
     "Dispatch implementer subagent (./implementer-prompt.md)" -> "Implementer returns NEEDS_CONTEXT/BLOCKED?";
     "Implementer returns NEEDS_CONTEXT/BLOCKED?" -> "Controller answers directly or asks user via question" [label="needs context"];
     "Controller answers directly or asks user via question" -> "Dispatch implementer subagent (./implementer-prompt.md)";
-    "Implementer returns NEEDS_CONTEXT/BLOCKED?" -> "Implementer subagent implements, tests, commits, self-reviews" [label="ready"];
-    "Implementer subagent implements, tests, commits, self-reviews" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)";
+    "Implementer returns NEEDS_CONTEXT/BLOCKED?" -> "Implementer subagent implements, tests, self-reviews" [label="ready"];
+    "Implementer subagent implements, tests, self-reviews" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)";
     "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" -> "Spec reviewer subagent confirms code matches spec?";
     "Spec reviewer subagent confirms code matches spec?" -> "Implementer subagent fixes spec gaps" [label="no"];
     "Implementer subagent fixes spec gaps" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" [label="re-review"];
@@ -76,13 +77,16 @@ digraph process {
     "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" -> "Code quality reviewer subagent approves?";
     "Code quality reviewer subagent approves?" -> "Implementer subagent fixes quality issues" [label="no"];
     "Implementer subagent fixes quality issues" -> "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [label="re-review"];
-    "Code quality reviewer subagent approves?" -> "Mark task complete in TodoWrite" [label="yes"];
+    "Code quality reviewer subagent approves?" -> "Implementer subagent commits approved task changes" [label="yes"];
+    "Implementer subagent commits approved task changes" -> "Mark task complete in TodoWrite";
     "Mark task complete in TodoWrite" -> "More tasks remain?";
     "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
     "More tasks remain?" -> "Dispatch final code reviewer subagent for entire implementation" [label="no"];
     "Dispatch final code reviewer subagent for entire implementation" -> "Use finishing-a-development-branch";
 }
 ```
+
+Per-task commits happen only after spec compliance and code quality reviews both approve the task. Reviewers inspect the task's uncommitted diff against the task's base commit; the controller tells the implementer to commit only after the review loop is green.
 
 ## Model Selection
 
@@ -159,14 +163,14 @@ You: [Use OpenCode `question` if needed, or answer directly]
   - Implemented install-hook command
   - Added tests, 5/5 passing
   - Self-review: Found I missed --force flag, added it
-  - Committed
 
 [Dispatch spec compliance reviewer]
 Spec reviewer: ✅ Spec compliant - all requirements met, nothing extra
 
-[Get git SHAs, dispatch code quality reviewer]
+[Dispatch code quality reviewer against Task 1 base commit + current working tree diff]
 Code reviewer: Strengths: Good test coverage, clean. Issues: None. Approved.
 
+[Implementer commits approved task changes]
 [Mark Task 1 complete]
 
 Task 2: Recovery modes
@@ -180,7 +184,6 @@ Implementer:
   - Added verify/repair modes
   - 8/8 tests passing
   - Self-review: All good
-  - Committed
 
 [Dispatch spec compliance reviewer]
 Spec reviewer: ❌ Issues:
@@ -193,7 +196,7 @@ Implementer: Removed --json flag, added progress reporting
 [Spec reviewer reviews again]
 Spec reviewer: ✅ Spec compliant now
 
-[Dispatch code quality reviewer]
+[Dispatch code quality reviewer against Task 2 base commit + current working tree diff]
 Code reviewer: Strengths: Solid. Issues (Important): Magic number (100)
 
 [Implementer fixes]
@@ -202,6 +205,7 @@ Implementer: Extracted PROGRESS_INTERVAL constant
 [Code reviewer reviews again]
 Code reviewer: ✅ Approved
 
+[Implementer commits approved task changes]
 [Mark Task 2 complete]
 
 ...
@@ -259,6 +263,7 @@ Done!
 - Skip review loops (reviewer found issues = implementer fixes = review again)
 - Let implementer self-review replace actual review (both are needed)
 - **Start code quality review before spec compliance is ✅** (wrong order)
+- **Commit task changes before spec compliance and code quality reviews are both ✅**
 - Move to next task while either review has open issues
 - Reuse any `task_id` from Task N when dispatching Task N+1 (context contamination)
 
@@ -272,6 +277,7 @@ Done!
 - Implementer (same-task subagent) fixes them
 - Reviewer reviews again
 - Repeat until approved
+- Commit only after both review stages approve
 - Don't skip the re-review
 
 **If subagent fails task:**
@@ -283,7 +289,6 @@ Done!
 **Required workflow skills:**
 - **`using-git-worktrees`** - REQUIRED: Set up isolated workspace before starting
 - **`writing-plans`** - Creates the plan this skill executes
-- **`requesting-code-review`** - Code review template for reviewer subagents
 - **`finishing-a-development-branch`** - Complete development after all tasks
 
 **Subagents should use:**
