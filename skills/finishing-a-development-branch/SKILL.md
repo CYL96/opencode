@@ -63,9 +63,30 @@ Which option?
 
 **Don't add explanation** - keep options concise.
 
+### Step 3.5: Archive Active Spec And Plan (After Choosing Option 1 Or 2)
+
+Run this step only after the user chooses Option 1 (Merge locally) or Option 2 (Push and create PR). Do not archive for Option 3 (Keep as-is) or Option 4 (Discard).
+
+Archive only the current work's explicitly identified documents:
+
+- Never bulk-move all files from either `active/` directory
+- If the current spec or plan path is not explicit in context, stop and ask before moving anything
+- Create destination directories if needed, move the current spec from `docs/specs/active/` to `docs/specs/completed/`, move the current plan from `docs/plans/active/` to `docs/plans/completed/`, then stage those path changes and create the archive commit on the current branch with `git-commit` before continuing
+
+```bash
+# Example for explicitly identified files only
+mkdir -p docs/specs/completed docs/plans/completed
+mv "<current-spec-path>" "docs/specs/completed/<spec-filename>"
+mv "<current-plan-path>" "docs/plans/completed/<plan-filename>"
+git add "<current-spec-path>" "docs/specs/completed/<spec-filename>" "<current-plan-path>" "docs/plans/completed/<plan-filename>"
+# Then create the archive commit with the git-commit skill before continuing
+```
+
 ### Step 4: Execute Choice
 
 #### Option 1: Merge Locally
+
+After completing Step 3.5 on the feature branch:
 
 ```bash
 # Switch to base branch
@@ -88,6 +109,8 @@ Then: Cleanup worktree (Step 5)
 
 #### Option 2: Push and Create PR
 
+After completing Step 3.5 on the feature branch:
+
 ```bash
 # Push branch
 git push -u origin <feature-branch>
@@ -103,7 +126,7 @@ EOF
 )"
 ```
 
-Then: Cleanup worktree (Step 5)
+Then: Keep worktree unless the user explicitly asks to clean it up later.
 
 #### Option 3: Keep As-Is
 
@@ -135,7 +158,7 @@ Then: Cleanup worktree (Step 5)
 
 ### Step 5: Cleanup Worktree
 
-**For Options 1, 2, 4:**
+**For Options 1 and 4:**
 
 Check if in worktree:
 ```bash

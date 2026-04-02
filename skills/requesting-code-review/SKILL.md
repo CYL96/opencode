@@ -63,7 +63,7 @@ HEAD_SHA=$(git rev-parse HEAD)
 
 [Dispatch reviewer subagent via OpenCode `task`]
   WHAT_WAS_IMPLEMENTED: Search indexing and repair support
-  PLAN_OR_REQUIREMENTS: docs/superpowers/plans/deployment-plan.md
+  PLAN_OR_REQUIREMENTS: Task 2 from docs/plans/active/deployment-plan.md
   BASE_SHA: a7981ec
   HEAD_SHA: 3df7661
   DESCRIPTION: Added indexing, verification, and repair flows for conversation search
