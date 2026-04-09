@@ -135,9 +135,25 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 ## Execution Handoff
 
-After saving the plan, offer execution choice with the OpenCode `question` tool:
+After saving the plan, before offering any execution choice or starting implementation, ask with the OpenCode `question` tool:
 
-**"Plan complete and saved to `docs/plans/active/<filename>.md`. Two execution options:**
+**"Plan complete and saved to `docs/plans/active/<filename>.md`. Before we start implementation, do you want me to commit the current plan/spec documents first?"**
+
+- This question is mandatory even if the user says to start coding immediately or already states a preferred execution mode.
+- Do not combine this with the execution-mode question. Resolve the document-commit decision first.
+
+**If the user wants the documents committed:**
+- **REQUIRED SUB-SKILL:** Use `git-commit`
+- Commit the current plan document plus any related spec edits that are part of the implementation handoff.
+- After the commit succeeds, offer the execution choice below.
+
+**If the user does not want a document commit yet:**
+- Do not commit the docs.
+- Offer the execution choice below.
+
+After the document-commit question is resolved, offer execution choice with the OpenCode `question` tool:
+
+**"Two execution options:**
 
 **1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
 

@@ -95,7 +95,7 @@ Instructions say WHAT, not HOW. "Add X" or "Fix Y" doesn't mean skip workflows. 
 
 ## Repository Defaults
 
-- Use Chinese for all dialogue, analysis, explanations, code comments, and change notes.
+- Use Chinese for all dialogue, analysis, explanations, documentation, code comments, and change notes.
 - Assume NixOS by default.
 - Prefer `nix shell` or `nix run` when a temporary tool is needed.
 - Write comments for future maintainers and AI collaborators, focusing on business intent, constraints, non-obvious reasoning, external contracts, and modification hazards.
