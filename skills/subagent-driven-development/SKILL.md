@@ -5,19 +5,39 @@ description: Use when executing implementation plans with independent tasks in t
 
 # Subagent-Driven Development
 
-Execute an approved plan by dispatching one fresh role-specific subagent per plan task. The controller prepares complete task context, sends it to the real `implementer`, `spec-reviewer`, and `code-reviewer` subagent types, and advances only through explicit status returns.
+Execute plan by dispatching a fresh subagent at each task boundary, with two-stage review after each: spec compliance review first, then code review. Commit the task only after both reviews pass.
 
-**Core principle:** The controller coordinates. The real subagents execute. Full task details live in skill-owned dispatch templates, not in `agents/`.
+**Why subagents:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never inherit your session's context or history - you construct exactly what they need. This also preserves your own context for coordination work.
+
+**Core principle:** Fresh subagent per task boundary + two-stage review (spec then code review) + commit only after approval = high quality, fast iteration
+
+The role behavior lives in `agents/*.md`, while the complete task-specific context lives in this skill's `*-dispatch-prompt.md` templates.
 
 ## When to Use
-- You already have an approved implementation plan
-- Tasks are mostly independent and can be executed one at a time in this session
-- You want explicit task boundaries, explicit review gates, and lower context pressure
 
-**vs. `executing-plans`:**
-- Stay in the current session instead of handing work to a parallel session
-- Dispatch a fresh subagent per plan task
-- Keep review loops explicit with `spec-reviewer` before `code-reviewer`
+```dot
+digraph when_to_use {
+    "Have implementation plan?" [shape=diamond];
+    "Tasks mostly independent?" [shape=diamond];
+    "Stay in this session?" [shape=diamond];
+    "subagent-driven-development" [shape=box];
+    "executing-plans" [shape=box];
+    "Manual execution or brainstorm first" [shape=box];
+
+    "Have implementation plan?" -> "Tasks mostly independent?" [label="yes"];
+    "Have implementation plan?" -> "Manual execution or brainstorm first" [label="no"];
+    "Tasks mostly independent?" -> "Stay in this session?" [label="yes"];
+    "Tasks mostly independent?" -> "Manual execution or brainstorm first" [label="no - tightly coupled"];
+    "Stay in this session?" -> "subagent-driven-development" [label="yes"];
+    "Stay in this session?" -> "executing-plans" [label="no - parallel session"];
+}
+```
+
+**vs. Executing Plans (parallel session):**
+- Same session (no context switch)
+- Fresh subagent per task (no context pollution)
+- Two-stage review after each task: spec compliance first, then code review
+- Faster iteration (no human-in-loop between tasks)
 
 ## Branch Gate Before Dispatch
 
@@ -29,109 +49,276 @@ Before reading tasks or dispatching any implementation subagent:
 4. If the user does not approve direct development on `main/master`, stop immediately
 5. Otherwise continue into the normal process
 
-## Required Dispatch Assets
-- `./implementer-dispatch-prompt.md`
-- `./spec-reviewer-dispatch-prompt.md`
-- `./code-reviewer-dispatch-prompt.md`
-
 ## The Process
-1. Run the branch gate.
-2. Read the plan once. Extract each task's full text, task goal, relevant spec excerpts, allowed file scope, and verification commands.
-3. Create or update TodoWrite from the plan.
-4. For the current task, fill `./implementer-dispatch-prompt.md` with the full task details and dispatch the real `implementer` subagent type.
-5. If `implementer` returns `NEEDS_CONTEXT`, provide the missing context directly or ask the user with `question`, then re-dispatch the same task.
-6. If `implementer` returns `BLOCKED`, stop and escalate. Do not blindly retry with the same context.
-7. If `implementer` returns `DONE` or `DONE_WITH_CONCERNS`, fill `./spec-reviewer-dispatch-prompt.md` with the current task requirements and review range, then dispatch the real `spec-reviewer`.
-8. If `spec-reviewer` returns `CHANGES_REQUIRED`, send the findings back to the same-task `implementer` and repeat the spec review until it returns `APPROVED`.
-9. After spec approval, fill `./code-reviewer-dispatch-prompt.md` with the current task context and current diff range, then dispatch the real `code-reviewer`.
-10. If `code-reviewer` returns `CHANGES_REQUIRED`, send the findings back to the same-task `implementer` and repeat the code review until it returns `APPROVED`.
-11. If either reviewer returns `BLOCKED`, stop and resolve the blocker before moving on.
-12. Only after both reviewers approve may the controller ask the implementer to perform the task commit.
-13. Mark the task complete in TodoWrite.
-14. For the next plan task, start a fresh implementer session with a new `task` invocation.
-15. After all plan tasks are complete, use `finishing-a-development-branch`.
 
-## Preparing Dispatch Context
+```dot
+digraph process {
+    rankdir=TB;
 
-Before calling the real `implementer`, prepare these fields:
-- `task_title`
-- `task_goal`
-- `full_task_details`
-- `repo_path`
-- `relevant_context`
-- `allowed_edit_scope`
-- `constraints`
-- `verification_requirements`
-- `expected_output`
+    subgraph cluster_per_task {
+        label="Per Task";
+        "Dispatch implementer subagent (./implementer-dispatch-prompt.md)" [shape=box];
+        "Implementer returns NEEDS_CONTEXT/BLOCKED?" [shape=diamond];
+        "Controller answers directly or asks user via question" [shape=box];
+        "Implementer subagent implements, tests, self-reviews" [shape=box];
+        "Dispatch spec reviewer subagent (./spec-reviewer-dispatch-prompt.md)" [shape=box];
+        "Spec reviewer subagent confirms code matches spec?" [shape=diamond];
+        "Implementer subagent fixes spec gaps" [shape=box];
+        "Dispatch code reviewer subagent (./code-reviewer-dispatch-prompt.md)" [shape=box];
+        "Code reviewer subagent approves?" [shape=diamond];
+        "Implementer subagent fixes code review issues" [shape=box];
+        "Implementer subagent commits approved task changes" [shape=box];
+        "Mark task complete in TodoWrite" [shape=box];
+    }
 
-Before calling the real `spec-reviewer`, prepare these fields:
-- `review_target`
-- `full_requirement_details`
-- `implemented_scope`
-- `base_reference`
-- `current_diff_or_range`
-- `review_constraints`
-- `expected_output`
+    "Run git branch --show-current" [shape=box];
+    "Branch name empty?" [shape=diamond];
+    "Branch is main/master?" [shape=diamond];
+    "Ask user for explicit permission before implementation" [shape=box];
+    "Permission granted?" [shape=diamond];
+    "Stop and ask user how to proceed" [shape=box];
+    "Stop immediately" [shape=box];
+    "Read plan, extract all tasks with full text, note context, create TodoWrite" [shape=box];
+    "More tasks remain?" [shape=diamond];
+    "Dispatch final code reviewer subagent for entire implementation" [shape=box];
+    "Use finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
-Before calling the real `code-reviewer`, prepare these fields:
-- `review_goal`
-- `full_context`
-- `requirements_context`
-- `diff_base`
-- `diff_target`
-- `current_diff_or_range`
-- `severity_policy`
-- `expected_output`
+    "Run git branch --show-current" -> "Branch name empty?";
+    "Branch name empty?" -> "Stop and ask user how to proceed" [label="yes"];
+    "Branch name empty?" -> "Branch is main/master?" [label="no"];
+    "Branch is main/master?" -> "Ask user for explicit permission before implementation" [label="yes"];
+    "Branch is main/master?" -> "Read plan, extract all tasks with full text, note context, create TodoWrite" [label="no"];
+    "Ask user for explicit permission before implementation" -> "Permission granted?";
+    "Permission granted?" -> "Stop immediately" [label="no"];
+    "Permission granted?" -> "Read plan, extract all tasks with full text, note context, create TodoWrite" [label="yes"];
+    "Read plan, extract all tasks with full text, note context, create TodoWrite" -> "Dispatch implementer subagent (./implementer-dispatch-prompt.md)";
+    "Dispatch implementer subagent (./implementer-dispatch-prompt.md)" -> "Implementer returns NEEDS_CONTEXT/BLOCKED?";
+    "Implementer returns NEEDS_CONTEXT/BLOCKED?" -> "Controller answers directly or asks user via question" [label="needs context"];
+    "Controller answers directly or asks user via question" -> "Dispatch implementer subagent (./implementer-dispatch-prompt.md)";
+    "Implementer returns NEEDS_CONTEXT/BLOCKED?" -> "Implementer subagent implements, tests, self-reviews" [label="ready"];
+    "Implementer subagent implements, tests, self-reviews" -> "Dispatch spec reviewer subagent (./spec-reviewer-dispatch-prompt.md)";
+    "Dispatch spec reviewer subagent (./spec-reviewer-dispatch-prompt.md)" -> "Spec reviewer subagent confirms code matches spec?";
+    "Spec reviewer subagent confirms code matches spec?" -> "Implementer subagent fixes spec gaps" [label="no"];
+    "Implementer subagent fixes spec gaps" -> "Dispatch spec reviewer subagent (./spec-reviewer-dispatch-prompt.md)" [label="re-review"];
+    "Spec reviewer subagent confirms code matches spec?" -> "Dispatch code reviewer subagent (./code-reviewer-dispatch-prompt.md)" [label="yes"];
+    "Dispatch code reviewer subagent (./code-reviewer-dispatch-prompt.md)" -> "Code reviewer subagent approves?";
+    "Code reviewer subagent approves?" -> "Implementer subagent fixes code review issues" [label="no"];
+    "Implementer subagent fixes code review issues" -> "Dispatch code reviewer subagent (./code-reviewer-dispatch-prompt.md)" [label="re-review"];
+    "Code reviewer subagent approves?" -> "Implementer subagent commits approved task changes" [label="yes"];
+    "Implementer subagent commits approved task changes" -> "Mark task complete in TodoWrite";
+    "Mark task complete in TodoWrite" -> "More tasks remain?";
+    "More tasks remain?" -> "Dispatch implementer subagent (./implementer-dispatch-prompt.md)" [label="yes"];
+    "More tasks remain?" -> "Dispatch final code reviewer subagent for entire implementation" [label="no"];
+    "Dispatch final code reviewer subagent for entire implementation" -> "Use finishing-a-development-branch";
+}
+```
 
-`full_task_details` and `full_requirement_details` must include the complete task detail for the current task. Do not summarize away acceptance criteria.
+Per-task commits happen only after spec compliance and code review both approve the task. Reviewers inspect the task's uncommitted diff against the task's base commit; the controller tells the implementer to commit only after the review loop is green.
 
-## Task Boundary Isolation
+## Model Selection
+
+Use the least powerful model that can handle each role to conserve cost and increase speed.
+
+**Mechanical implementation tasks** (isolated functions, clear specs, 1-2 files): use a fast, cheap model. Most implementation tasks are mechanical when the plan is well-specified.
+
+**Integration and judgment tasks** (multi-file coordination, pattern matching, debugging): use a standard model.
+
+**Architecture, design, and review tasks**: use the most capable available model.
+
+**Task complexity signals:**
+- Touches 1-2 files with a complete spec -> cheap model
+- Touches multiple files with integration concerns -> standard model
+- Requires design judgment or broad codebase understanding -> most capable model
+
+## Task Boundary Isolation (Critical)
 
 Context isolation is the whole point of this workflow. Treat each plan task as a hard boundary.
 
 **Required rules:**
-- Different plan task means different subagent session. Start a new `task` invocation and do not pass a previous `task_id`.
-- Never reuse prior-task `task_id` values for `implementer`, `spec-reviewer`, or `code-reviewer`.
-- Reuse is allowed only within the same plan task for clarification loops and fix-and-review loops.
-- Once a plan task is marked complete, consider all subagent session IDs for that task closed.
+- **Different plan task => different subagent session.** Start a new `task` invocation and do not pass a previous `task_id`.
+- **Never reuse prior-task `task_id` values** for implementer, spec reviewer, or code reviewer.
+- **Reuse is allowed only within the same plan task** (for `NEEDS_CONTEXT`, re-dispatches, and review/fix loops).
+- Once a plan task is marked complete, consider all subagent session IDs for that task closed and unavailable.
 
-## Handling Status Returns
+**Controller sanity check before dispatch:**
+- If current task label changed (for example from Task 1 to Task 2), any attempt to resume a prior `task_id` is a workflow violation.
 
-**`implementer`:**
-- `DONE`: continue to `spec-reviewer`
-- `DONE_WITH_CONCERNS`: read the concerns, resolve anything material, then continue to `spec-reviewer`
-- `NEEDS_CONTEXT`: supply missing context and re-dispatch
-- `BLOCKED`: stop and escalate
+## Handling Implementer Status
 
-**`spec-reviewer`:**
-- `APPROVED`: continue to `code-reviewer`
-- `CHANGES_REQUIRED`: send findings back to the same-task `implementer`
-- `BLOCKED`: stop and escalate
+Implementer subagents report one of four statuses. Handle each appropriately:
 
-**`code-reviewer`:**
-- `APPROVED`: allow the task commit
-- `CHANGES_REQUIRED`: send findings back to the same-task `implementer`
-- `BLOCKED`: stop and escalate
+**DONE:** Proceed to spec compliance review.
 
-The controller must never guess whether a subagent succeeded. Use only the explicit returned status.
+**DONE_WITH_CONCERNS:** The implementer completed the work but flagged doubts. Read the concerns before proceeding. If the concerns are about correctness or scope, address them before review. If they're observations (e.g., "this file is getting large"), note them and proceed to review.
+
+**NEEDS_CONTEXT:** The implementer needs information that wasn't provided. Provide the missing context directly, or use the OpenCode `question` tool if human input is required, then re-dispatch.
+
+**BLOCKED:** The implementer cannot complete the task. Assess the blocker:
+1. If it's a context problem, provide more context and re-dispatch with the same model
+2. If the task requires more reasoning, re-dispatch with a more capable model
+3. If the task is too large, break it into smaller pieces
+4. If the plan itself is wrong, escalate to the human
+
+**Never** ignore an escalation or force the same model to retry without changes. If the implementer said it's stuck, something needs to change.
+
+## Prompt Templates
+
+- `./implementer-dispatch-prompt.md` - Dispatch the real `implementer` subagent with full task details
+- `./spec-reviewer-dispatch-prompt.md` - Dispatch the real `spec-reviewer` subagent with full requirement context
+- `./code-reviewer-dispatch-prompt.md` - Dispatch the real `code-reviewer` subagent against the current task diff
+
+## Example Workflow
+
+```
+You: I'm using Subagent-Driven Development to execute this plan.
+
+[Read plan file once: docs/plans/active/feature-plan.md]
+[Extract all 5 tasks with full text and context]
+[Create TodoWrite with all tasks]
+
+Task 1: Hook installation script
+
+[Get Task 1 text and context (already extracted)]
+[Dispatch implementation subagent with full task text + context]
+
+Implementer: `Status: NEEDS_CONTEXT` - should the hook be installed at user or system level?
+
+You: [Use OpenCode `question` if needed, or answer directly]
+
+[Re-dispatch implementer with clarified context]
+[Later] Implementer:
+  - Implemented install-hook command
+  - Added tests, 5/5 passing
+  - Self-review: Found I missed --force flag, added it
+
+[Dispatch spec compliance reviewer]
+Spec reviewer: ✅ Spec compliant - all requirements met, nothing extra
+
+[Dispatch code reviewer against Task 1 base commit + current working tree diff]
+Code reviewer: Strengths: Good test coverage, clean. Issues: None. Approved.
+
+[Implementer commits approved task changes]
+[Mark Task 1 complete]
+
+Task 2: Recovery modes
+
+[Get Task 2 text and context (already extracted)]
+[Create NEW implementer subagent session for Task 2 (do not reuse Task 1 `task_id`)]
+[Dispatch implementation subagent with full task text + context]
+
+Implementer: [No extra context needed, proceeds]
+Implementer:
+  - Added verify/repair modes
+  - 8/8 tests passing
+  - Self-review: All good
+
+[Dispatch spec compliance reviewer]
+Spec reviewer: ❌ Issues:
+  - Missing: Progress reporting (spec says "report every 100 items")
+  - Extra: Added --json flag (not requested)
+
+[Implementer fixes issues]
+Implementer: Removed --json flag, added progress reporting
+
+[Spec reviewer reviews again]
+Spec reviewer: ✅ Spec compliant now
+
+[Dispatch code reviewer against Task 2 base commit + current working tree diff]
+Code reviewer: Strengths: Solid. Issues (Important): Magic number (100)
+
+[Implementer fixes]
+Implementer: Extracted PROGRESS_INTERVAL constant
+
+[Code reviewer reviews again]
+Code reviewer: ✅ Approved
+
+[Implementer commits approved task changes]
+[Mark Task 2 complete]
+
+...
+
+[After all tasks]
+[Dispatch final reviewer subagent]
+Final reviewer: All requirements met, ready to merge
+
+Done!
+```
+
+## Advantages
+
+**vs. Manual execution:**
+- Subagents follow TDD naturally
+- Fresh context per task (no confusion)
+- Parallel-safe (subagents don't interfere)
+- Subagent can surface `NEEDS_CONTEXT` before or during work, and the controller can use `question` when user input is required
+
+**vs. Executing Plans:**
+- Same session (no handoff)
+- Continuous progress (no waiting)
+- Review checkpoints automatic
+
+**Efficiency gains:**
+- No file reading overhead (controller provides full text)
+- Controller curates exactly what context is needed
+- Subagent gets complete information upfront
+- Questions surfaced before work begins (not after)
+
+**Quality gates:**
+- Self-review catches issues before handoff
+- Two-stage review: spec compliance, then code review
+- Review loops ensure fixes actually work
+- Spec compliance prevents over/under-building
+- Code quality ensures implementation is well-built
+
+**Cost:**
+- More subagent invocations (implementer + 2 reviewers per task)
+- Controller does more prep work (extracting all tasks upfront)
+- Review loops add iterations
+- But catches issues early (cheaper than debugging later)
 
 ## Red Flags
 
 **Never:**
-- Dispatch `general` for these role-specific tasks when `implementer`, `spec-reviewer`, and `code-reviewer` are available
-- Let `SKILL.md` carry role behavior that belongs in `agents/*.md`
-- Omit the complete task detail from `full_task_details` or `full_requirement_details`
-- Start `code-reviewer` before `spec-reviewer` returns `APPROVED`
-- Commit task changes before both reviewers approve
-- Reuse a `task_id` from Task N for Task N+1
-- Let the controller implement or review the task directly instead of dispatching the proper subagent
-- Claim that repository-side prompt files mean the host runtime is already registered for these types
+- Start implementation on main/master branch without explicit user consent
+- Skip reviews (spec compliance OR code review)
+- Proceed with unfixed issues
+- Dispatch multiple implementation subagents in parallel (conflicts)
+- Make subagent read plan file (provide full text instead)
+- Skip scene-setting context (subagent needs to understand where task fits)
+- Ignore `NEEDS_CONTEXT` or `BLOCKED` responses (resolve them before re-dispatching)
+- Accept "close enough" on spec compliance (spec reviewer found issues = not done)
+- Skip review loops (reviewer found issues = implementer fixes = review again)
+- Let implementer self-review replace actual review (both are needed)
+- **Start code review before spec compliance is ✅** (wrong order)
+- **Commit task changes before spec compliance and code review are both ✅**
+- Move to next task while either review has open issues
+- Reuse any `task_id` from Task N when dispatching Task N+1 (context contamination)
+
+**If subagent returns `NEEDS_CONTEXT`:**
+- Answer clearly and completely
+- Provide additional context or ask the user with `question`
+- Re-dispatch with the clarified context
+- Don't rush them into implementation
+
+**If reviewer finds issues:**
+- Implementer (same-task subagent) fixes them
+- Reviewer reviews again
+- Repeat until approved
+- Commit only after both review stages approve
+- Don't skip the re-review
+
+**If subagent fails task:**
+- Dispatch fix subagent with specific instructions
+- Don't try to fix manually (context pollution)
 
 ## Integration
 
 **Required workflow skills:**
-- `writing-plans`
-- `finishing-a-development-branch`
+- **`writing-plans`** - Creates the plan this skill executes
+- **`finishing-a-development-branch`** - Complete development after all tasks
 
-**Related review skill:**
-- `requesting-code-review` for broader committed-range or branch reviews
+**Subagents should use:**
+- **`test-driven-development`** - Subagents follow TDD for each task
+
+**Alternative workflow:**
+- **`executing-plans`** - Use for parallel session instead of same-session execution
