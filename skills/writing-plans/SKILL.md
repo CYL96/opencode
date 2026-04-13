@@ -166,7 +166,7 @@ After the document-commit question is resolved, offer execution choice with the 
 
 **If Subagent-Driven chosen:**
 - **REQUIRED SUB-SKILL:** Use `subagent-driven-development`
-- Fresh subagent per task + two-stage review
+- The controller should dispatch the real `implementer`, `spec-reviewer`, and `code-reviewer` subagent types per task
 
 **If Inline Execution chosen:**
 - **REQUIRED SUB-SKILL:** Use `executing-plans`

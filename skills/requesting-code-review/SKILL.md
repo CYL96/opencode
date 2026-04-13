@@ -5,106 +5,57 @@ description: Use when completing tasks, implementing major features, or before m
 
 # Requesting Code Review
 
-Dispatch an OpenCode reviewer subagent with the `task` tool to catch issues before they cascade. The reviewer gets precisely crafted context for evaluation — never your session's history. This keeps the reviewer focused on the work product, not your thought process, and preserves your own context for continued work.
+Request a real `code-reviewer` subagent with a committed range or other explicit review range. This skill prepares the review context and dispatch contract; the reviewer behavior itself lives in `agents/code-reviewer.md`.
 
-**Core principle:** Review early, review often.
+**Core principle:** The controller curates the review range and requirements. The real `code-reviewer` performs the actual review.
 
 ## When to Request Review
 
 **Mandatory:**
-- After completing major feature
+- After completing a major feature
 - Before merge to main
 
 **Optional but valuable:**
-- When stuck (fresh perspective)
-- Before refactoring (baseline check)
-- After fixing complex bug
+- When stuck and you want a fresh technical review
+- Before refactoring risky code
+- After fixing a complex bug
 
-## How to Request
+## Dispatch Contract
 
-**Subagent-driven-development exception:**
+Before dispatching the real `code-reviewer`, prepare:
+- `review_goal`
+- `full_context`
+- `requirements_context`
+- `diff_base`
+- `diff_target`
+- `current_diff_or_range`
+- `severity_policy`
+- `expected_output`
 
-Do not use the committed-range flow below for pre-commit task reviews. In that workflow, the controller should wait until spec compliance passes, then dispatch the task-specific prompt at `skills/subagent-driven-development/code-quality-reviewer-prompt.md` to review the current working tree diff against `BASE_SHA`.
+Use `./code-reviewer-dispatch-prompt.md` to package these fields.
 
-Use the steps below when reviewing an already-committed range, such as a major feature before merge.
+## Committed-Range Review Flow
+1. Determine a precise review range. Prefer `git merge-base HEAD origin/main` for branch review, or another explicit base when the branch base is not the right boundary.
+2. Resolve `BASE_SHA` and `HEAD_SHA`.
+3. Fill `./code-reviewer-dispatch-prompt.md` with the complete review goal, requirements context, and committed range.
+4. Dispatch the real `code-reviewer` subagent type.
+5. Act on the returned status:
+   - `APPROVED`: continue
+   - `CHANGES_REQUIRED`: fix the findings before merge or before the next milestone
+   - `BLOCKED`: stop and resolve the missing context or review-range problem
 
-**1. Get git SHAs:**
-```bash
-BASE_SHA=$(git rev-parse HEAD~1)  # or origin/main
-HEAD_SHA=$(git rev-parse HEAD)
-```
+## Subagent-Driven Development Exception
 
-**2. Dispatch reviewer subagent:**
-
-Use the OpenCode `task` tool with `subagent_type: "general"`, and fill the prompt template at `code-reviewer.md`.
-
-**Placeholders:**
-- `{WHAT_WAS_IMPLEMENTED}` - What you just built
-- `{PLAN_OR_REQUIREMENTS}` - What it should do
-- `{BASE_SHA}` - Starting commit
-- `{HEAD_SHA}` - Ending commit for committed-range reviews
-- `{DESCRIPTION}` - Brief summary
-
-**3. Act on feedback:**
-- Fix Critical issues immediately
-- Fix Important issues before proceeding
-- Note Minor issues for later
-- Push back if reviewer is wrong (with reasoning)
-
-## Example
-
-```
-[Just completed a major feature and want review before merge]
-
-You: Let me request code review before proceeding.
-
-BASE_SHA=$(git merge-base HEAD origin/main)
-HEAD_SHA=$(git rev-parse HEAD)
-
-[Dispatch reviewer subagent via OpenCode `task`]
-  WHAT_WAS_IMPLEMENTED: Search indexing and repair support
-  PLAN_OR_REQUIREMENTS: Task 2 from docs/plans/active/deployment-plan.md
-  BASE_SHA: a7981ec
-  HEAD_SHA: 3df7661
-  DESCRIPTION: Added indexing, verification, and repair flows for conversation search
-
-[Subagent returns]:
-  Strengths: Clean architecture, real tests
-  Issues:
-    Important: Missing progress indicators
-    Minor: Magic number (100) for reporting interval
-  Assessment: Ready to proceed
-
-You: [Fix progress indicators]
-[Continue to Task 3]
-```
-
-## Integration with Workflows
-
-**Subagent-Driven Development:**
-- First complete spec compliance review for the task
-- Then review the uncommitted task diff against `BASE_SHA`
-- Use `skills/subagent-driven-development/code-quality-reviewer-prompt.md`, not `requesting-code-review/code-reviewer.md`
-
-**Executing Plans:**
-- Review after each batch (3 tasks)
-- Get feedback, apply, continue
-
-**Ad-Hoc Development:**
-- Review before merge
-- Review when stuck
+Do not use this committed-range flow for per-task pre-commit review inside `subagent-driven-development`. That workflow must dispatch the real `code-reviewer` using `skills/subagent-driven-development/code-reviewer-dispatch-prompt.md` against the task's current working tree diff after `spec-reviewer` approves.
 
 ## Red Flags
 
 **Never:**
-- Skip review because "it's simple"
-- Ignore Critical issues
-- Proceed with unfixed Important issues
-- Argue with valid technical feedback
+- Dispatch `general` for code review when `code-reviewer` exists
+- Ask the reviewer to inspect a vague range such as “latest changes”
+- Omit the requirements context
+- Treat the summary as more important than findings
+- Continue past `CHANGES_REQUIRED` without explicitly accepting the risk
 
-**If reviewer wrong:**
-- Push back with technical reasoning
-- Show code/tests that prove it works
-- Request clarification
-
-See template at: `requesting-code-review/code-reviewer.md`
+## Template Path
+- `./code-reviewer-dispatch-prompt.md` - Dispatch committed-range review to the real `code-reviewer`
