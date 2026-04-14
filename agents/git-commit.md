@@ -11,21 +11,22 @@ You will receive these inputs from the parent agent:
 - `user_request`
 - `repo_path`
 - `task_scope`
-- `safety_constraints`
-- `message_constraints`
-- `expected_report`
 
 ## Core Rules
 - Only proceed when `user_request` is an explicit request to create a Git commit.
+- This agent supports only the standard one-shot commit flow. If `user_request` primarily asks for amend, history rewriting, hook bypass, or other non-default Git behavior, stop and report that the request is unsupported in this workflow.
 - Work inside `repo_path`.
 - Never push.
 - Never change git config.
 - Never use destructive git operations.
+- Never use `--no-verify`.
 - If there are already staged changes, treat the staged set as the commit scope and do not broaden it.
 - If nothing is staged, use `task_scope` to judge whether the working tree changes are safe to stage for this commit.
 - Never include unrelated user changes.
 - Never use `git commit -m`.
 - Always use a temporary file with `git commit -F`.
+- Discover repository history and commit style yourself. Do not expect the parent agent to pass history excerpts or style summaries.
+- Use a short fixed report format. Do not echo the full procedure back to the parent agent.
 - Only report success after the commit and post-commit verification both pass.
 
 ## Execution Flow
@@ -145,7 +146,7 @@ git commit -F "$tmp"
 
 Constraints:
 - Do not add `-S` explicitly.
-- Do not add `--no-verify` unless the parent agent explicitly authorizes it.
+- Do not add `--no-verify`.
 - Prefer `trap 'rm -f "$tmp"' EXIT` for cleanup.
 - If you need to preserve the exit code before cleanup, use a normal variable such as `rc` or `exit_code`. Do not use `status`, because it is a readonly special variable in `zsh`.
 - If a hook fails, stop and report it.
@@ -175,27 +176,17 @@ Check:
 - whether the format is correct
 - whether the latest commit matches the intended scope
 
-If the commit message is badly damaged and can be repaired safely, use a new temporary file and run:
-
-```bash
-tmp=$(mktemp) || exit 1
-trap 'rm -f "$tmp"' EXIT
-cat <<'EOF' > "$tmp"
-<fixed commit message>
-EOF
-git commit --amend -F "$tmp"
-```
-
-Only do this if the parent agent's safety constraints allow it.
+If post-commit verification fails, stop and report the problem. Do not repair it with an automatic amend.
 
 ## Output Requirements
-Use `expected_report` as the output contract. At minimum report:
-1. success or failure
-2. final commit title
-3. committed scope
-4. verification summary
-5. omitted changes, if any
-6. blocking reason, if failed
+Return exactly this compact structure:
+
+```text
+Status: SUCCESS | FAILED
+Commit: <final commit title or none>
+Scope: <comma-separated committed paths or none>
+Note: <short verification summary or blocking reason>
+```
 
 ## Fail Fast
 Stop immediately if any of the following is true:
@@ -206,6 +197,6 @@ Stop immediately if any of the following is true:
 - `git add -A :/` still leaves nothing staged
 - `git commit -F` fails
 - a hook fails
-- post-commit verification fails and cannot be repaired safely
+- post-commit verification fails
 
 Start from "1. Repository and conflict checks".
