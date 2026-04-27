@@ -1,6 +1,6 @@
 ---
 name: dispatching-parallel-agents
-description: Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies
+description: "将多个独立子任务并行派发给隔离上下文代理，避免上下文污染。触发：3+ 测试文件因不同根因失败、多个子系统独立损坏、每个问题无需其他上下文即可单独理解。不适用：相关失败（修一个可修全部）、需理解系统全貌、代理会互相干扰、探索性调试、存在共享状态。"
 ---
 
 # Dispatching Parallel Agents

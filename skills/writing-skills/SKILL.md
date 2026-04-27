@@ -1,6 +1,6 @@
 ---
 name: writing-skills
-description: Use when creating new skills, editing existing skills, or verifying skills work before deployment
+description: "将 TDD 方法论应用于流程文档：先用压力场景测试基线行为(RED)→写技能文档使代理合规(GREEN)→收紧漏洞(REFACTOR)。触发：创建/编辑 SKILL.md、部署前验证技能有效性。不适用：一次性解决方案、广泛文档化的标准实践、项目特定约定（放 AGENTS.md）、可用正则/验证强制执行的机械约束。铁律：没有先写失败测试就没有技能文档。"
 ---
 
 # Writing Skills

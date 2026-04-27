@@ -1,10 +1,6 @@
 ---
 name: git-commit
-description: >-
-  【必须强制调用】托管式 Git 提交流程。
-  仅当用户明确表达“提交到 Git / commit / 生成提交记录”等意图时触发。
-  严禁直接通过普通 shell 执行裸 `git commit`。
-  本技能要求主代理使用 `task` 调用 `git-commit` 执行实际提交。
+description: "托管式 Git 提交流程调度器，通过 task 调用 git-commit 子代理执行提交，严禁裸执行 git commit。触发：仅当用户明确说出「提交到 Git」「commit」「生成提交记录」时才触发。模糊表述如「保存」「上传」「完成修改」不触发。严禁自动 push。"
 ---
 
 你是 Git 提交调度器。目标是只在用户明确要求提交时，使用 `task` 调用 `git-commit`，并且只传递 sub-agent 无法自行推断的最小上下文。

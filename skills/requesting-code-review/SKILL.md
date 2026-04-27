@@ -1,6 +1,6 @@
 ---
 name: requesting-code-review
-description: Use when completing tasks, implementing major features, or before merging to verify work meets requirements
+description: "派遣审查子代理对代码进行独立评审，及早发现问题。强制触发：完成重大功能后、合并到 main 前。可选触发：卡住时需要新鲜视角、重构前需要基线检查、修复复杂 bug 后。subagent-driven-development 场景中使用专用 reviewer 而非本技能的标准流程。"
 ---
 
 # Requesting Code Review

@@ -1,6 +1,6 @@
 ---
 name: brainstorming
-description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation."
+description: "通过协作对话探索需求与设计，在写任何代码前锁定意图、约束和方案。触发：创建功能、构建组件、添加功能、修改行为——无论任务多简单（含 todo list、单函数、配置变更）都必须经过此阶段。绝不可跳过直接进入实现或调用其他实现技能。终态是调用 writing-plans。"
 ---
 
 # Brainstorming Ideas Into Designs

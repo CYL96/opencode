@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: Use when you have a spec or requirements for a multi-step task, before touching code
+description: "将规格分解为零上下文可执行的详尽实现计划，定义每个任务需触摸的文件、代码、测试与预期行为。触发：brainstorming 产生 spec 之后、多步骤任务、动手写代码之前。不允许 TBD/TODO/placeholder 占位。输出到 docs/plans/active/。终态提供两种执行选项：Subagent-Driven（推荐）或 Inline Execution。"
 ---
 
 # Writing Plans

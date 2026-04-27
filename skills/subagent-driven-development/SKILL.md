@@ -1,6 +1,6 @@
 ---
 name: subagent-driven-development
-description: Use when executing implementation plans with independent tasks in the current session
+description: "在当前会话中，每次任务边界派遣新子代理执行，每个任务经历「规格合规审查→代码审查」两阶段，通过后才提交。触发：有实现计划 + 任务基本独立 + 可用 task 工具 → 首选。不适用：无计划（先 brainstorm）、任务紧密耦合（手动执行）、需独立会话（用 executing-plans）。禁止跨任务复用 task_id。终态调用 finishing-a-development-branch。"
 ---
 
 # Subagent-Driven Development

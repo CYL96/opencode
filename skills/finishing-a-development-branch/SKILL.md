@@ -1,6 +1,6 @@
 ---
 name: finishing-a-development-branch
-description: Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting context-aware options for merge, PR, or discard
+description: "开发工作完成后的收尾流程，提供合并/PR/丢弃三种上下文感知选项。触发：所有测试通过、需要决定如何集成工作成果。由 subagent-driven-development 或 executing-plans 在最后阶段自动调用。测试未通过时不得继续；分支名未知时暂停询问。"
 ---
 
 # Finishing a Development Branch

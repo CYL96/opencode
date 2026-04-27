@@ -1,6 +1,6 @@
 ---
 name: receiving-code-review
-description: Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation
+description: "接收代码审查反馈后的处理流程。触发：收到审查反馈，尤其反馈表述不清晰或技术上存疑时——必须先做独立技术验证再决定是否实施，禁止表演性附和（如「你说得对」）。核心原则：技术正确性优先于社交舒适。发生在 requesting-code-review 返回反馈之后、实施修改之前。"
 ---
 
 # Code Review Reception

@@ -1,6 +1,6 @@
 ---
 name: systematic-debugging
-description: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes
+description: "系统化四阶段调试（根因调查→模式分析→假设与测试→实施修复），铁律：先找到根因才能修复。触发：任何 bug、测试失败、异常行为、性能问题、构建失败、集成问题。时间紧迫或修复看似「显然」时最容易被跳过——反而最应该用。3+ 次修复失败后质疑架构，不再打补丁。修复前必须定位到此技能引用文件的根因。"
 ---
 
 # Systematic Debugging

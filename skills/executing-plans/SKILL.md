@@ -1,6 +1,6 @@
 ---
 name: executing-plans
-description: Use when you have a written implementation plan to execute in a separate session with review checkpoints
+description: "在独立（并行）会话中按书面实现计划逐任务执行，各检查点审查。触发：已有实现计划且无法使用 task 子代理工具时。若能启动子代理，优先用 subagent-driven-development。不得在 main/master 分支直接执行。终态调用 finishing-a-development-branch。"
 ---
 
 # Executing Plans

@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Use when implementing any feature or bugfix, before writing implementation code
+description: "严格遵守 Red-Green-Refactor 循环：先写失败测试→最小代码使其通过→重构。铁律：没有先写失败测试，就没有生产代码。始终触发于：新功能实现、bug 修复、重构、行为变更。排除：一次性原型、自动生成代码、配置文件（排除前征求用户）。systematic-debugging Phase 4 引用本技能写失败测试。"
 ---
 
 # Test-Driven Development (TDD)

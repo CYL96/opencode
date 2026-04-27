@@ -1,6 +1,6 @@
 ---
 name: verification-before-completion
-description: Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always
+description: "终端关卡：在任何完成/成功声明前强制运行验证命令并确认输出，证据在断言之前。触发：即将说「完成了」「修好了」「通过了」时、提交前、创建 PR 前、移到下一任务前、委派给代理前。禁止含混表述如「应该能工作」「可能好了」「似乎可以」。无例外——没有新鲜验证证据就没有完成声明。"
 ---
 
 # Verification Before Completion
