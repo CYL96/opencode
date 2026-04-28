@@ -1,103 +1,118 @@
 <EXTREMELY-IMPORTANT>
-If you think there is even a 1% chance a skill might apply to what you are doing, you ABSOLUTELY MUST invoke the skill.
+只有当技能描述与当前任务目标直接匹配，并且该技能会实际改变后续工作方式时，才调用技能。
 
-IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
+如果某个技能直接适用于当前任务，你没有选择余地，必须使用它。
 
-This is not negotiable. This is not optional. You cannot rationalize your way out of this.
+如果没有技能直接适用，不要为了形式合规调用无关技能。
 </EXTREMELY-IMPORTANT>
 
-## Instruction Priority
+## 指令优先级
 
-OpenCode skills override default assistant behavior, but **user instructions always take precedence**:
+OpenCode 技能会覆盖默认助手行为，但用户指令始终拥有最高优先级：
 
-1. **User's explicit instructions** (`AGENTS.md`, direct requests, higher-priority runtime constraints) - highest priority
-2. **OpenCode skills** - define the required workflow when a skill applies
-3. **Default assistant behavior** - lowest priority
+1. **用户的明确指令**：`AGENTS.md`、直接请求和更高优先级的运行时约束
+2. **OpenCode 技能**：当技能适用时，定义必须遵循的工作流
+3. **默认助手行为**：仅在前两者没有约束时使用
 
-If a user instruction conflicts with a skill, follow the user instruction and keep the response aligned with the current OpenCode environment.
+如果用户指令与技能冲突，遵循用户指令，同时尽量保持行为符合当前 OpenCode 环境。
 
-# Using Skills
+# 使用技能
 
-## The Rule
+## 核心规则
 
-**Invoke relevant or requested skills BEFORE any response or action.** Even a 1% chance a skill might apply means that you should invoke the skill to check. If an invoked skill turns out to be wrong for the situation, you don't need to use it.
+**在任何回复或行动之前，先判断是否有直接适用的技能。** `AGENTS.md` 只定义选择策略，不复制每个技能的完整触发矩阵；具体触发条件和执行流程始终以 `skill` 为准。
 
-```dot
-digraph skill_flow {
-    "User message received" [shape=doublecircle];
-    "About to EnterPlanMode?" [shape=doublecircle];
-    "Already brainstormed?" [shape=diamond];
-    "Invoke brainstorming skill" [shape=box];
-    "Might any skill apply?" [shape=diamond];
-    "Invoke Skill tool" [shape=box];
-    "Announce: 'Using [skill] to [purpose]'" [shape=box];
-    "Has checklist?" [shape=diamond];
-    "Create TodoWrite todo per item" [shape=box];
-    "Follow skill exactly" [shape=box];
-    "Respond (including clarifications)" [shape=doublecircle];
+只有同时满足以下条件时才调用技能：
 
-    "About to EnterPlanMode?" -> "Already brainstormed?";
-    "Already brainstormed?" -> "Invoke brainstorming skill" [label="no"];
-    "Already brainstormed?" -> "Might any skill apply?" [label="yes"];
-    "Invoke brainstorming skill" -> "Might any skill apply?";
+1. 技能描述中的触发条件覆盖当前任务类型或用户明确点名该技能。
+2. 技能流程会改变下一步执行方式、验证要求或交付路径。
 
-    "User message received" -> "Might any skill apply?";
-    "Might any skill apply?" -> "Invoke Skill tool" [label="yes, even 1%"];
-    "Might any skill apply?" -> "Respond (including clarifications)" [label="definitely not"];
-    "Invoke Skill tool" -> "Announce: 'Using [skill] to [purpose]'";
-    "Announce: 'Using [skill] to [purpose]'" -> "Has checklist?";
-    "Has checklist?" -> "Create TodoWrite todo per item" [label="yes"];
-    "Has checklist?" -> "Follow skill exactly" [label="no"];
-    "Create TodoWrite todo per item" -> "Follow skill exactly";
-}
-```
+泛泛相关、可能有帮助、只是保险起见，都不是调用技能的理由。不直接适用时，按用户请求和默认助手行为继续处理。
 
-## Red Flags
+## 技能调用边界
 
-These thoughts mean STOP—you're rationalizing:
+优先做到准确调用，而不是最大化调用次数。
 
-| Thought | Reality |
-|---------|---------|
-| "This is just a simple question" | Questions are tasks. Check for skills. |
-| "I need more context first" | Skill check comes BEFORE clarifying questions. |
-| "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
-| "I can check git/files quickly" | Files lack conversation context. Check for skills. |
-| "Let me gather information first" | Skills tell you HOW to gather information. |
-| "This doesn't need a formal skill" | If a skill exists, use it. |
-| "I remember this skill" | Skills evolve. Read current version. |
-| "This doesn't count as a task" | Action = task. Check for skills. |
-| "The skill is overkill" | Simple things become complex. Use it. |
-| "I'll just do this one thing first" | Check BEFORE doing anything. |
-| "This feels productive" | Undisciplined action wastes time. Skills prevent this. |
-| "I know what that means" | Knowing the concept ≠ using the skill. Invoke it. |
+- 用户明确要求使用某个技能时，调用该技能。
+- 任务目标直接命中技能描述的触发条件时，调用该技能。
+- 已经处在某个技能流程中时，只在该技能明确要求进入下游技能时再调用下一个技能。
+- 多个技能直接适用时，只调用当前阶段最先决定流程的技能，不同时加载一串“可能会用到”的技能。
+- 事件型技能只在事件真实发生时触发，例如提交、审查反馈、完成声明、合并/PR 收尾。
+- 只是普通解释、轻量读取文件、状态汇报、简单文档整理、无行为变化的文字润色，且没有直接命中技能描述时，不调用技能。
+- 不要先调用一个技能来“确认是否适用”；适用性判断应在调用前完成。
 
-## Skill Priority
+## 技能选择步骤
 
-When multiple skills could apply, use this order:
+每次只做足够的判断，避免把技能系统变成额外负担。
 
-1. **Process skills first** (brainstorming, debugging) - these determine HOW to approach the task
-2. **Implementation skills second** (frontend-design, mcp-builder) - these guide execution
+1. **识别当前目标**：用户是在要设计、调试、实现、执行计划、审查、提交、收尾，还是只是在问问题。
+2. **对照技能描述**：只看 `skills/*/SKILL.md` 的描述是否直接覆盖当前目标；不要从技能名称或泛泛相似性推断。
+3. **判断是否改变流程**：如果加载技能不会改变下一步动作、验证要求或交付路径，就不要调用。
+4. **选择最早门槛**：若多个技能都直接适用，选择最先阻塞后续工作的流程门槛；完成后再按该技能要求进入下游。
+5. **保留用户优先级**：用户明确覆盖流程时，按用户指令处理，但保留必要的安全验证与风险说明。
 
-"Let's build X" → brainstorming first, then implementation skills.
-"Fix this bug" → debugging first, then domain-specific skills.
+## 常见流程链路
 
-## Skill Types
+这些链路用于排序，不是新的触发表。是否调用仍以技能描述直接匹配为准。
 
-**Rigid** (TDD, debugging): Follow exactly. Don't adapt away discipline.
+- **需求或行为变化**：先完成设计/规格类入口，再进入计划与实现；不要跳过入口直接写代码。
+- **故障或失败**：先定位根因，再写回归测试或修复；不要用猜测替代调查。
+- **已有规格或计划**：从当前阶段继续推进，不回退到早期头脑风暴；按计划选择执行方式。
+- **代码审查相关**：请求审查、接收审查反馈、处理反馈是不同事件；只在对应事件发生时调用对应技能。
+- **Git 与收尾**：提交、PR、合并、归档、完成声明都是终端事件；只在用户请求或流程到达该事件时触发。
 
-**Flexible** (patterns): Adapt principles to context.
+## 禁止绕过或误用的信号
 
-The skill itself tells you which.
+出现下列表达或想法时，立即停止并重新判断技能是否直接适用。
 
-## User Instructions
+| 想法 | 事实 |
+|------|------|
+| “技能可能有点相关，先调用再说” | 泛泛相关不是触发条件。 |
+| “调用技能更保险” | 无关技能会浪费上下文并污染流程。 |
+| “用户只是要我直接改，所以适用技能也不用看” | 用户指令优先，但直接适用的技能仍应先评估是否与指令冲突。 |
+| “我记得这个技能怎么用” | 技能可能已更新，直接适用时读取当前版本。 |
+| “这是 bug 但我可以顺手修” | bug、测试失败和异常行为直接命中系统化调试。 |
+| “快完成了，不用验证” | 完成声明直接命中完成前验证。 |
+| “用户说 commit，我直接 git commit” | 提交请求直接命中 git-commit 技能。 |
+| “只是简单功能，不用需求探索” | 新功能或行为变更直接命中 brainstorming/TDD 等流程时，应按技能处理。 |
 
-Instructions say WHAT, not HOW. "Add X" or "Fix Y" doesn't mean skip workflows. Repository defaults still apply unless the user explicitly overrides them.
+## 技能优先级
 
-## Repository Defaults
+当多个技能可能适用时，按以下顺序处理：
 
-- Use Chinese for all dialogue, analysis, explanations, documentation, code comments, and change notes.
-- Assume NixOS by default.
-- Prefer `nix shell` or `nix run` when a temporary tool is needed.
-- Write comments for future maintainers and AI collaborators, focusing on business intent, constraints, non-obvious reasoning, external contracts, and modification hazards.
-- Do not comment code's surface-level actions.
-- Prefer clearer naming, stronger types, and tests over comments whenever possible.
+1. **用户明确点名优先**：用户直接要求使用某个技能时，先处理这个明确指令。
+2. **入口/阻塞技能优先**：决定能否继续推进的设计、调试、计划入口，优先于具体实现或执行。
+3. **下游执行技能随后**：只有当前置技能、规格或计划已经满足时，才进入实施、审查、提交或收尾。
+4. **终端事件技能最后**：提交、PR、合并、完成声明等只在对应事件真实发生时触发。
+
+示例：
+
+- “构建 X” 先完成设计入口，再进入计划与执行。
+- “修复这个 bug” 先定位根因，再进入回归测试与修复。
+
+## 技能类型
+
+**刚性技能**：例如 TDD、系统化调试。必须逐条执行，不要为了“灵活”而削弱流程纪律。
+
+**弹性技能**：例如模式或设计类技能。遵循原则，并根据上下文调整具体做法。
+
+技能文档自身会说明它属于哪种类型，以及哪些步骤不可跳过。
+
+## 用户指令与技能的关系
+
+用户指令定义“要做什么”，技能定义“如何安全、可验证地完成”。
+
+“添加 X”“修复 Y”“直接修改”这类指令不会自动跳过直接适用的技能。只有当用户明确要求改变流程，且该要求与技能发生冲突时，才按用户指令处理，并尽量保留必要的安全检查。
+
+反过来，也不要把用户请求强行解释成技能触发条件。技能必须与当前任务目标直接匹配，才进入技能流程。
+
+仓库默认规则仍然生效，除非用户明确覆盖。
+
+## 仓库默认规则
+
+- 所有对话、分析、解释、文档、代码注释和变更说明默认使用中文。
+- 默认假设运行环境是 NixOS。
+- 需要临时工具时，优先使用 `nix shell` 或 `nix run`。
+- 注释面向未来维护者和 AI 协作者，重点说明业务意图、约束、非显而易见的原因、外部契约和修改风险。
+- 不要注释代码表面的动作，例如“把值赋给变量”。
+- 优先使用更清晰的命名、更强的类型和测试来表达意图，而不是依赖注释解释。
